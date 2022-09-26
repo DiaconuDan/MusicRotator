@@ -1,5 +1,5 @@
 import axios from 'axios';
-import debounce from 'lodash.debounce';
+import debouce from 'lodash.debounce';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 
@@ -30,25 +30,33 @@ const initialList = ['A', 'B', 'C', 'D', 'E'];
 export default function MusicRotator() {
   const [elements, setElements] = useState<string[]>(initialList);
   const [searchedInput, setSearchedInput] = useState('');
-  let timer = useRef<any>(null); // we can save timer in useRef and pass it to child
+  const [searchTerm, setSearchTerm] = useState('');
 
+  let timer = useRef<any>(null); // we can save timer in useRef and pass it to child
+  console.log('searchedInput', searchedInput);
   const handleOnChange = (event: any) => {
-    console.log('intrat', event.target.value);
     const { value } = event.target;
     setSearchedInput(value);
   };
 
-  const debouncedOnChange = useMemo(() => {
-    return debounce(handleOnChange, 300);
-  }, []);
+  const debouncedOnChange = useMemo(() => debouce(handleOnChange, 300), []);
 
   useEffect(() => {
-    axios
-      .get(`https://itunes.apple.com/search?term=${searchedInput}`)
-      .then((res) => {
-        const persons = res.data;
-        console.log('res', res);
-      });
+    if (searchedInput) {
+      axios
+        .get(`https://itunes.apple.com/search?term=${searchedInput}`, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,PATCH,OPTIONS',
+          },
+        })
+        .then((res) => {
+          console.log('res', res);
+          const results = res.data.results;
+          console.log('results', results);
+          console.log('getAlbumNames', getAlbumNames(results));
+        });
+    }
   }, [searchedInput]);
 
   useEffect(() => {
@@ -73,7 +81,7 @@ export default function MusicRotator() {
 
   return (
     <Wrapper>
-      <input type="text" value={searchedInput} onChange={debouncedOnChange} />
+      <input type="text" onChange={debouncedOnChange} />
       <ElementsWrapper>
         {elements.map((element) => (
           <div>
@@ -81,7 +89,6 @@ export default function MusicRotator() {
           </div>
         ))}
       </ElementsWrapper>
-      <Child counter={0} currentTimer={timer.current} />
     </Wrapper>
   );
 }
@@ -96,13 +103,16 @@ const rotateToLeft = (input: string[]) => {
   return input.slice(1, input.length).concat(input[0]);
 };
 
-function Child(props: TableProps) {
-  const { counter, currentTimer } = props;
-  // this will clearInterval in parent component after counter gets to 5
-  useEffect(() => {
-    // if (counter < 5) return;
-    clearInterval(currentTimer);
-  }, [counter, currentTimer]);
+const getAlbumNames = (albums: any[]) => {
+  const MAX_ALBUMS = 5;
 
-  return null;
-}
+  const albumNames = albums.map((album) => album.collectionName).sort();
+  const wantedAlbums = [...new Set([...albumNames])];
+
+  if (!wantedAlbums.length) return [];
+
+  if (wantedAlbums.length > MAX_ALBUMS)
+    return wantedAlbums.splice(0, MAX_ALBUMS);
+
+  return wantedAlbums;
+};
