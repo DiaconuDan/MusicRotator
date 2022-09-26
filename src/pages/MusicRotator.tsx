@@ -1,39 +1,18 @@
 import axios from 'axios';
 import debouce from 'lodash.debounce';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import styled from 'styled-components';
 
-const Wrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-  align-items: center;
-
-  padding-top: 24px;
-  gap: 32px;
-`;
-
-const ElementsWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-  flex-direction: column;
-  align-items: center;
-
-  border: 1px solid red;
-
-  gap: 10px;
-`;
-
-const delay = 2;
-const initialList = ['A', 'B', 'C', 'D', 'E'];
+import { DELAY, INITIAL_MUSIC_LIST } from './constants';
+import { ElementsWrapper, Wrapper } from './styles';
+import { getAlbumNames, rotateToLeft } from './utils';
 
 export default function MusicRotator() {
-  const [elements, setElements] = useState<string[]>(initialList);
+  const [elements, setElements] = useState<string[]>(INITIAL_MUSIC_LIST);
+  const [quedElements, setQuedElements] = useState<string[]>([]);
   const [searchedInput, setSearchedInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
 
-  let timer = useRef<any>(null); // we can save timer in useRef and pass it to child
-  console.log('searchedInput', searchedInput);
+  let timer = useRef<any>(null);
+
   const handleOnChange = (event: any) => {
     const { value } = event.target;
     setSearchedInput(value);
@@ -43,6 +22,7 @@ export default function MusicRotator() {
 
   useEffect(() => {
     if (searchedInput) {
+      let isCancelled = false; // this one can be improved to fetch signals, to be put to off, so we also stop the call, but went for this one since code challenge timeframe is like 30-60mins
       axios
         .get(`https://itunes.apple.com/search?term=${searchedInput}`, {
           headers: {
@@ -51,26 +31,40 @@ export default function MusicRotator() {
           },
         })
         .then((res) => {
-          console.log('res', res);
           const results = res.data.results;
-          console.log('results', results);
-          console.log('getAlbumNames', getAlbumNames(results));
+          const albumNames = getAlbumNames(results);
+
+          if (albumNames.length > 0 && !isCancelled) {
+            setQuedElements(albumNames);
+          }
         });
+
+      return () => {
+        isCancelled = true;
+        setQuedElements([]);
+      };
     }
   }, [searchedInput]);
 
   useEffect(() => {
-    const shiftedElements = rotateToLeft(elements);
+    let shiftedElements = rotateToLeft(elements);
+
+    if (quedElements.length > 0) {
+      shiftedElements[shiftedElements.length - 1] = quedElements[0];
+      const newQuedElements = [...quedElements].slice(1);
+      setQuedElements(newQuedElements);
+    }
 
     timer.current = setInterval(
       () => setElements(shiftedElements),
-      delay * 1000
+      DELAY * 1000
     );
 
     // clear on component unmount
     return () => {
       clearInterval(timer.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements]);
 
   useEffect(() => {
@@ -83,8 +77,8 @@ export default function MusicRotator() {
     <Wrapper>
       <input type="text" onChange={debouncedOnChange} />
       <ElementsWrapper>
-        {elements.map((element) => (
-          <div>
+        {elements.map((element, index) => (
+          <div key={element + index}>
             {element} <br />
           </div>
         ))}
@@ -92,27 +86,3 @@ export default function MusicRotator() {
     </Wrapper>
   );
 }
-interface TableProps {
-  counter: number;
-  currentTimer: any;
-}
-
-const rotateToLeft = (input: string[]) => {
-  if (!input || input.length <= 1) return input;
-
-  return input.slice(1, input.length).concat(input[0]);
-};
-
-const getAlbumNames = (albums: any[]) => {
-  const MAX_ALBUMS = 5;
-
-  const albumNames = albums.map((album) => album.collectionName).sort();
-  const wantedAlbums = [...new Set([...albumNames])];
-
-  if (!wantedAlbums.length) return [];
-
-  if (wantedAlbums.length > MAX_ALBUMS)
-    return wantedAlbums.splice(0, MAX_ALBUMS);
-
-  return wantedAlbums;
-};
