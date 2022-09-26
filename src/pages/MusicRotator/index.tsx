@@ -13,7 +13,7 @@ export default function MusicRotator() {
 
   let timer = useRef<any>(null);
 
-  const handleOnChange = (event: any) => {
+  const handleOnChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target;
     setSearchedInput(value);
   };
@@ -39,7 +39,6 @@ export default function MusicRotator() {
 
       return () => {
         isCancelled = true;
-        setQuedElements([]);
       };
     }
   }, [searchedInput]);
@@ -76,9 +75,7 @@ export default function MusicRotator() {
       <input type="text" onChange={debouncedOnChange} />
       <ElementsWrapper>
         {elements.map((element, index) => (
-          <div key={element + index}>
-            {element} <br />
-          </div>
+          <div key={element + index}>{element}</div>
         ))}
       </ElementsWrapper>
     </Container>
