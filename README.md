@@ -1,4 +1,4 @@
-# Hi there :) welcome to my basic music radio rotator using react and typescript
+## Hi there :) welcome to my basic music rotator using react and typescript
 
-To get started, just yarn install and npm start. See you on localhost:3000
+To get started, just yarn install and npm start. See you on
 
